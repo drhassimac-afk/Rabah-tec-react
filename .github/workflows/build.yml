@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-android:
-    name: 📱 Build Android
+    name: 📱 Build Android APK
     runs-on: ubuntu-latest
     
     steps:
@@ -17,11 +17,13 @@ jobs:
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18.x
+          node-version: 20.x
           cache: 'npm'
 
       - name: 📦 Install Dependencies
-        run: npm ci
+        run: |
+          npm install -g expo-cli
+          npm ci
 
       - name: 🔧 Setup Expo
         uses: expo/expo-github-action@v8
@@ -32,7 +34,8 @@ jobs:
 
       - name: 🏗️ Build Android APK
         run: |
-          EAS_SKIP_AUTO_FINGERPRINT=1 eas build --platform android --profile preview --non-interactive
+          npx expo install
+          EAS_SKIP_AUTO_FINGERPRINT=1 npx eas-cli build --platform android --profile preview --non-interactive
 
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v4
@@ -41,4 +44,15 @@ jobs:
           path: |
             *.apk
             **/*.apk
+            build-*.apk
           retention-days: 30
+
+      - name: 📤 Upload Build Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ github.sha }}
+          path: |
+            *.log
+            build-*.log
+          retention-days: 7
