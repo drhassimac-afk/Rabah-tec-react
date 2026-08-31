@@ -1,1 +1,76 @@
-{"expo":{"name":"RabahTec React","slug":"rabah-tec-react","version":"1.0.0","orientation":"portrait","icon":"./assets/images/icon.png","userInterfaceStyle":"dark","splash":{"image":"./assets/images/splash.png","resizeMode":"contain","backgroundColor":"#0b1220"},"assetBundlePatterns":["**/*"],"ios":{"supportsTablet":true,"bundleIdentifier":"com.rabah.tec.react"},"android":{"adaptiveIcon":{"foregroundImage":"./assets/images/adaptive-icon.png","backgroundColor":"#0b1220"},"package":"com.rabah.tec.react","permissions":["android.permission.CAMERA","android.permission.RECORD_AUDIO","android.permission.READ_EXTERNAL_STORAGE","android.permission.WRITE_EXTERNAL_STORAGE","android.permission.INTERNET","android.permission.ACCESS_NETWORK_STATE","android.permission.ACCESS_WIFI_STATE","android.permission.POST_NOTIFICATIONS"]},"web":{"favicon":"./assets/images/favicon.png"},"plugins":[["expo-camera",{"cameraPermission":"يحتاج التطبيق إلى الوصول إلى الكاميرا للبث المباشر والمكالمات."}],["expo-av",{"microphonePermission":"يحتاج التطبيق إلى الوصول إلى الميكروفون للمكالمات الصوتية."}],["expo-notifications",{"icon":"./assets/images/notification-icon.png","color":"#0b1220"}],["expo-document-picker",{"iCloudContainerEnvironment":"Production"}]],"extra":{"eas":{"projectId":"2ce9376c-bca8-451f-aa98-129c72a100f8"}}}}
+{
+  "expo": {
+    "name": "RabahTec React",
+    "slug": "rabah-tec-react",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0b1220"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rabah.tec.react"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#0b1220"
+      },
+      "package": "com.rabah.tec.react",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "يحتاج التطبيق إلى الوصول إلى الكاميرا للبث المباشر والمكالمات."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "يحتاج التطبيق إلى الوصول إلى الميكروفون للمكالمات الصوتية."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#0b1220"
+        }
+      ],
+      [
+        "expo-document-picker",
+        {
+          "iCloudContainerEnvironment": "Production"
+        }
+      ],
+      "expo-audio",
+      "expo-sharing"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "2ce9376c-bca8-451f-aa98-129c72a100f8"
+      }
+    }
+  }
+}
