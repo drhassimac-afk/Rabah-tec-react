@@ -17,27 +17,31 @@ jobs:
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 18.x
           cache: 'npm'
 
       - name: 📦 Install Dependencies
-        run: |
-          npm install -g expo-cli
-          npm ci
+        run: npm ci
 
-      - name: 🔧 Setup Expo
-        uses: expo/expo-github-action@v8
-        with:
-          expo-version: latest
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+      - name: 📦 Install Expo and EAS
+        run: |
+          npm install -g expo-cli@6.3.10
+          npm install -g eas-cli
+
+      - name: 🔑 Expo Login
+        run: |
+          echo "EXPO_TOKEN=${{ secrets.EXPO_TOKEN }}" >> $GITHUB_ENV
+          echo "EXPO_USERNAME=${{ secrets.EXPO_USERNAME }}" >> $GITHUB_ENV
+          npx expo login --non-interactive -u ${{ secrets.EXPO_USERNAME }} -p ${{ secrets.EXPO_PASSWORD }} || true
 
       - name: 🏗️ Build Android APK
         run: |
-          npx expo install
-          EAS_SKIP_AUTO_FINGERPRINT=1 npx eas-cli build --platform android --profile preview --non-interactive
+          export EAS_SKIP_AUTO_FINGERPRINT=1
+          npx eas-cli build --platform android --profile preview --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: 📤 Upload APK
+      - name: 📤 Find and Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: rabah-tec-react-android-${{ github.sha }}
@@ -45,14 +49,5 @@ jobs:
             *.apk
             **/*.apk
             build-*.apk
+            ./*.apk
           retention-days: 30
-
-      - name: 📤 Upload Build Logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-logs-${{ github.sha }}
-          path: |
-            *.log
-            build-*.log
-          retention-days: 7
