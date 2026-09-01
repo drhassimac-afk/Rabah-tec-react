@@ -4,13 +4,8 @@
     "slug": "rabah-tec-react",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0b1220"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -20,8 +15,9 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#0b1220"
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundColor": "#0b1220",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.rabah.tec.react",
       "permissions": [
@@ -36,7 +32,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       [
@@ -46,15 +42,9 @@
         }
       ],
       [
-        "expo-av",
-        {
-          "microphonePermission": "يحتاج التطبيق إلى الوصول إلى الميكروفون للمكالمات الصوتية."
-        }
-      ],
-      [
         "expo-notifications",
         {
-          "icon": "./assets/images/notification-icon.png",
+          "icon": "./assets/icon.png",
           "color": "#0b1220"
         }
       ],
@@ -65,7 +55,9 @@
         }
       ],
       "expo-audio",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-asset",
+      "expo-splash-screen"
     ],
     "extra": {
       "eas": {

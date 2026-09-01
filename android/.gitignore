@@ -1,0 +1,28 @@
+# OSX
+#
+.DS_Store
+
+# Android/IntelliJ
+#
+build/
+.idea
+.gradle
+local.properties
+*.iml
+*.hprof
+.cxx/
+
+# generated inline modules
+app/src/main/java/inline/
+
+# Bundle artifacts
+*.jsbundle
+
+# Local ARM64/Termux toolchains
+android-ndk-r27b/
+
+# Local/generated signing key
+debug.keystore
+
+# Local backup files
+*.backup-*
