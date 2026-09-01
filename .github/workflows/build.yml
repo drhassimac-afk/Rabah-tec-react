@@ -9,7 +9,7 @@ jobs:
   build-android:
     name: 📱 Build Android APK
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
@@ -17,39 +17,21 @@ jobs:
       - name: 🟢 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18.x
-          cache: 'npm'
+          node-version: 20
+          cache: npm
 
       - name: 📦 Install Dependencies
-        run: |
-          rm -f package-lock.json
-          npm install --legacy-peer-deps
+        run: npm ci
 
-      - name: 📦 Install Expo and EAS
-        run: |
-          npm install -g expo-cli@6.3.10
-          npm install -g eas-cli
-
-      - name: 🔑 Login to Expo
-        run: |
-          npx expo login --non-interactive -u ${{ secrets.EXPO_USERNAME }} -p ${{ secrets.EXPO_PASSWORD }}
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-
-      - name: 🔗 Link EAS Project
-        run: |
-          npx eas-cli init --force --non-interactive || true
+      - name: 📦 Install EAS CLI
+        run: npm install -g eas-cli
 
       - name: 🏗️ Build Android APK
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
         run: |
           export EAS_SKIP_AUTO_FINGERPRINT=1
-          npx eas-cli build --platform android --profile preview --non-interactive
-
-      - name: 📤 Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: rabah-tec-react-android-${{ github.sha }}
-          path: |
-            *.apk
-            **/*.apk
-          retention-days: 30
+          eas build \
+            --platform android \
+            --profile preview \
+            --non-interactive
