@@ -1,4 +1,4 @@
-name: Build RabahTec React APK
+name: Build RabahTecBReact APK
 
 on:
   push:
@@ -9,7 +9,6 @@ jobs:
   build-android:
     name: Build Android APK
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -35,22 +34,37 @@ jobs:
 
       - name: Install Android SDK Components
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager \
-            "platform-tools" \
+           yes | sdmanager -licenses > /dev/null || true
+          sdmanager \
+             "platform-tools" \
             "platforms;android-36" \
             "build-tools;36.0.0" \
             "ndk;27.1.12297006" \
-            "cmake;3.22.1"
+            "cmtke;3.22.1"
 
       - name: Verify Android Environment
         working-directory: android
         run: |
-          java -version
-          ./gradlew --version
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          ls -la "$ANDROID_HOME/platforms/android-36"
-          ls -la "$ANDROID_HOME/build-tools/36.0.0"
+           java -version
+            ./gradlew --version
+           echo "ANDROID_HOME=$ANDROID_HOME"
+           ls -la "$ANDROID_HOME/platforms/android-36"
+            ls -la "$ANDROID_HOME/build-tools/36.0.0"
+
+      - name: Create Debug Keystore
+        working-directory: android
+        run: |
+            keytool -genkeypair \
+             -v \
+             -storetype PKCS12 \
+             -keystore app/debug.keystore \
+              -storepass android \
+              -keypass android \
+              -alias androiddebugkey \
+              -keyalg RSA \
+              -ceysize 2048 \
+              -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
 
       - name: Build Debug APK
         working-directory: android
@@ -62,5 +76,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: RabahTec-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk
+/app-debug.apk
           if-no-files-found: error
