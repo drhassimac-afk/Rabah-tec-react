@@ -21,33 +21,35 @@ jobs:
           cache: 'npm'
 
       - name: 📦 Install Dependencies
-        run: npm ci
+        run: |
+          rm -f package-lock.json
+          npm install --legacy-peer-deps
 
       - name: 📦 Install Expo and EAS
         run: |
           npm install -g expo-cli@6.3.10
           npm install -g eas-cli
 
-      - name: 🔑 Expo Login
+      - name: 🔑 Login to Expo
         run: |
-          echo "EXPO_TOKEN=${{ secrets.EXPO_TOKEN }}" >> $GITHUB_ENV
-          echo "EXPO_USERNAME=${{ secrets.EXPO_USERNAME }}" >> $GITHUB_ENV
-          npx expo login --non-interactive -u ${{ secrets.EXPO_USERNAME }} -p ${{ secrets.EXPO_PASSWORD }} || true
+          npx expo login --non-interactive -u ${{ secrets.EXPO_USERNAME }} -p ${{ secrets.EXPO_PASSWORD }}
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 🔗 Link EAS Project
+        run: |
+          npx eas-cli init --force --non-interactive || true
 
       - name: 🏗️ Build Android APK
         run: |
           export EAS_SKIP_AUTO_FINGERPRINT=1
           npx eas-cli build --platform android --profile preview --non-interactive
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
-      - name: 📤 Find and Upload APK
+      - name: 📤 Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: rabah-tec-react-android-${{ github.sha }}
           path: |
             *.apk
             **/*.apk
-            build-*.apk
-            ./*.apk
           retention-days: 30
