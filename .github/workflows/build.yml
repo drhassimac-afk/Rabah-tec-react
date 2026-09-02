@@ -1,54 +1,41 @@
-name: Build APK
+name: Build Android APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, master]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-node@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          node-version: 20
+          cache: npm
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-java@v4
         with:
-          node-version: '22'
+          distribution: temurin
+          java-version: 17
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm ci --legacy-peer-deps
 
-      - name: Prebuild Android
-        run: npx expo prebuild --platform android --clean
+      - name: Generate native Android project (CNG)
+        run: npx expo prebuild --platform android --no-install
 
-      - name: Add debug signing to release
+      - name: Build release APK
+        working-directory: android
         run: |
-          sed -i '/signingConfigs {/a\
-              release {\
-                  storeFile file("debug.keystore")\
-                  storePassword "android"\
-                  keyAlias "androiddebugkey"\
-                  keyPassword "android"\
-              }' android/app/build.gradle
-          sed -i '/buildTypes {/,/release {/{/release {/a\
-                  signingConfig signingConfigs.release
-          }' android/app/build.gradle
-
-      - name: Build Release APK
-        run: |
-          cd android
+          chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: app-release
-          path: android/app/build/outputs/apk/release/app-release.apk
+          name: rabah-app-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
