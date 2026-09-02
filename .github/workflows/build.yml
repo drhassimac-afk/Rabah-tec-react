@@ -1,80 +1,54 @@
-name: Build RabahTec React APK
+name: Build APK
 
 on:
   push:
-    branches: [main, master]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  build-android:
-    name: Build Android APK
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Setup Java 17
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
           java-version: '17'
-          cache: gradle
+          distribution: 'temurin'
 
-      - name: Install Dependencies
-        run: npm ci
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
 
-      - name: Install Android SDK Components
+      - name: Prebuild Android
+        run: npx expo prebuild --platform android --clean
+
+      - name: Add debug signing to release
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager \
-            "platform-tools" \
-            "platforms;android-36" \
-            "build-tools;36.0.0" \
-            "ndk;27.1.12297006" \
-            "cmake;3.22.1"
+          sed -i '/signingConfigs {/a\
+              release {\
+                  storeFile file("debug.keystore")\
+                  storePassword "android"\
+                  keyAlias "androiddebugkey"\
+                  keyPassword "android"\
+              }' android/app/build.gradle
+          sed -i '/buildTypes {/,/release {/{/release {/a\
+                  signingConfig signingConfigs.release
+          }' android/app/build.gradle
 
-      - name: Verify Android Environment
-      - name: Create Debug Keystore
-        working-directory: android
+      - name: Build Release APK
         run: |
-          keytool -genkeypair \
-            -v \
-            -storetype PKCS12 \
-            -keystore app/debug.keystore \
-            -storepass android \
-            -keypass android \
-            -alias androiddebugkey \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -dname "CN=Android Debug,O=Android,C=US"
-        working-directory: android
-        run: |
-          java -version
-          ./gradlew --version
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          ls -la "$ANDROID_HOME/platforms/android-36"
-          ls -la "$ANDROID_HOME/build-tools/36.0.0"
-
-      - name: Build Debug APK
-        working-directory: android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          cd android
+          ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: RabahTec-debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          name: app-release
+          path: android/app/build/outputs/apk/release/app-release.apk
