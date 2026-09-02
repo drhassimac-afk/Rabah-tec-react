@@ -44,6 +44,20 @@ jobs:
             "cmake;3.22.1"
 
       - name: Verify Android Environment
+      - name: Create Debug Keystore
+        working-directory: android
+        run: |
+          keytool -genkeypair \
+            -v \
+            -storetype PKCS12 \
+            -keystore app/debug.keystore \
+            -storepass android \
+            -keypass android \
+            -alias androiddebugkey \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
         working-directory: android
         run: |
           java -version
