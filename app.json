@@ -35,6 +35,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "@config-plugins/react-native-webrtc",
       "expo-router",
       [
         "expo-camera",
@@ -58,7 +59,8 @@
       "expo-audio",
       "expo-sharing",
       "expo-asset",
-      "expo-splash-screen"
+      "expo-splash-screen",
+      "expo-font"
     ],
     "extra": {
       "eas": {
