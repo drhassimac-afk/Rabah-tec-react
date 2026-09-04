@@ -61,7 +61,20 @@
       "expo-sharing",
       "expo-asset",
       "expo-splash-screen",
-      "expo-font"
+      "expo-font",
+      "expo-build-properties",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": false,
+            "gradleProperties": {
+              "org.gradle.jvmargs": "-Xmx3072m -XX:MaxMetaspaceSize=1024m",
+              "org.gradle.workers.max": "2"
+            }
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {
