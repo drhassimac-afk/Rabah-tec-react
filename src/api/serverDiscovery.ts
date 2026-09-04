@@ -3,11 +3,11 @@ import * as Network from 'expo-network';
 
 const CACHE_KEY = 'rabahtec_server_url';
 const PORT = 4000;
-const PING_TIMEOUT_MS = 700;
+const PING_TIMEOUT_MS = 1500;
+const SCAN_BATCH_SIZE = 32;
 
 // نضع رابط الاستضافة الحقيقي هنا بعد نشر الـ Backend.
-// مثال: https://rabah-tec-server.onrender.com
-export const CLOUD_SERVER_URL = 'https://YOUR-CLOUD-SERVER.example.com';
+export const CLOUD_SERVER_URL = 'https://rabah-tec-react.onrender.com';
 
 async function pingUrl(url: string): Promise<boolean> {
   const controller = new AbortController();
@@ -47,23 +47,28 @@ async function getLocalSubnetPrefix(): Promise<string | null> {
 async function scanLocalNetwork(
   prefix: string
 ): Promise<string | null> {
-  const candidates: Promise<{ url: string; ok: boolean }>[] = [];
+  for (let start = 1; start <= 254; start += SCAN_BATCH_SIZE) {
+    const end = Math.min(start + SCAN_BATCH_SIZE - 1, 254);
+    const candidates: Promise<{ url: string; ok: boolean }>[] = [];
 
-  for (let i = 1; i <= 254; i++) {
-    const url = `http://${prefix}.${i}:${PORT}`;
+    for (let i = start; i <= end; i++) {
+      const url = `http://${prefix}.${i}:${PORT}`;
 
-    candidates.push(
-      pingUrl(url).then((ok) => ({
-        url,
-        ok,
-      }))
-    );
+      candidates.push(
+        pingUrl(url).then((ok) => ({
+          url,
+          ok,
+        }))
+      );
+    }
+
+    const results = await Promise.all(candidates);
+    const found = results.find((r) => r.ok);
+
+    if (found) return found.url;
   }
 
-  const results = await Promise.all(candidates);
-  const found = results.find((r) => r.ok);
-
-  return found ? found.url : null;
+  return null;
 }
 
 export async function discoverServerUrl(
