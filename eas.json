@@ -8,6 +8,7 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+        "resourceClass": "large",
       },
       "env": {
         "APP_ENV": "preview"
