@@ -59,7 +59,7 @@ export default function CinemaScreen() {
         }
       }
     });
-    return off;
+    return () => { off?.(); };
   }, [isMp4, player]);
 
   const shareVideo = () => {

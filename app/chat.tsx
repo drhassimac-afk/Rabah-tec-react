@@ -16,7 +16,7 @@ export default function ChatScreen() {
     const off = onChat((payload) => {
       setMessages((prev) => [...prev, payload]);
     });
-    return off;
+    return () => { off?.(); };
   }, []);
 
   const handleSend = () => {
