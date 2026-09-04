@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "RabahTec React",
+    "name": "RabaTec",
     "slug": "rabah-tec-react",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -74,7 +74,8 @@
             }
           }
         }
-      ]
+      ],
+      "expo-video"
     ],
     "extra": {
       "eas": {

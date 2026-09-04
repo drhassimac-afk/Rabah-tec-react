@@ -1,22 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Animated,
-  Vibration,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { getSocket } from '../src/api/socket';
 
 const C = {
   bg: '#0B1120',
   surface: '#161F2E',
   border: '#243044',
-  primary: '#EF4444',
+  primary: '#3B82F6',
   text: '#FFFFFF',
   sub: '#94A3B8',
   muted: '#64748B',
@@ -25,315 +18,148 @@ const C = {
   success: '#22C55E',
 };
 
-const SUITS = [
-  { symbol: '♠', color: '#E2E8F0' },
-  { symbol: '♥', color: '#EF4444' },
-  { symbol: '♦', color: '#EF4444' },
-  { symbol: '♣', color: '#E2E8F0' },
-];
+const SUITS = ['♠️', '♥️', '♦️', '♣️'];
+const VALUES = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]; // 11=J,12=Q,13=K,14=A
+const LABELS: Record<number, string> = { 11: 'J', 12: 'Q', 13: 'K', 14: 'A' };
 
-const RANK_LABELS = [
-  'A',
-  '2',
-  '3',
-  '4',
-  '5',
-  '6',
-  '7',
-  '8',
-  '9',
-  '10',
-  'J',
-  'Q',
-  'K',
-];
-
-type Card = {
-  rank: number;
-  label: string;
-  suit: {
-    symbol: string;
-    color: string;
-  };
-};
-
-function drawCard(): Card {
-  const rank = Math.floor(Math.random() * 13);
+function randomCard() {
+  const value = VALUES[Math.floor(Math.random() * VALUES.length)];
   const suit = SUITS[Math.floor(Math.random() * SUITS.length)];
-
-  return {
-    rank,
-    label: RANK_LABELS[rank],
-    suit,
-  };
+  return { value, suit };
 }
 
-function CardFace({ card }: { card: Card | null }) {
-  if (!card) {
-    return <View style={s.cardFace} />;
-  }
-
-  return (
-    <View style={s.cardFace}>
-      <Text style={[s.cardRank, { color: card.suit.color }]}>
-        {card.label}
-      </Text>
-
-      <Text style={[s.cardSuit, { color: card.suit.color }]}>
-        {card.suit.symbol}
-      </Text>
-    </View>
-  );
+function cardLabel(value: number) {
+  return LABELS[value] || String(value);
 }
 
 export default function CardsGameScreen() {
-  const sock = useRef(getSocket());
-
-  const [current, setCurrent] = useState<Card>(drawCard);
-  const [next, setNext] = useState<Card | null>(null);
+  const socket = useRef(getSocket());
+  const [current, setCurrent] = useState(randomCard());
   const [streak, setStreak] = useState(0);
   const [best, setBest] = useState(0);
   const [gameOver, setGameOver] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [lastResult, setLastResult] = useState<'win' | 'lose' | null>(null);
 
-  const fade = useRef(new Animated.Value(0)).current;
-  const flip = useRef(new Animated.Value(0)).current;
-  const scoreSubmitted = useRef(false);
-
-  useEffect(() => {
-    Animated.timing(fade, {
-      toValue: 1,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
-  }, [fade]);
-
-  const guess = (direction: 'higher' | 'lower') => {
-    if (busy || gameOver) return;
-
-    setBusy(true);
-
-    const drawn = drawCard();
-    setNext(drawn);
-
-    Animated.sequence([
-      Animated.timing(flip, {
-        toValue: 1,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      const correct =
-        (direction === 'higher' && drawn.rank >= current.rank) ||
-        (direction === 'lower' && drawn.rank <= current.rank);
-
-      if (correct) {
-        Vibration.vibrate(15);
-
-        setStreak((st) => {
-          const ns = st + 1;
-          setBest((b) => Math.max(b, ns));
-          return ns;
-        });
-
-        setCurrent(drawn);
-        setNext(null);
-        flip.setValue(0);
-        setBusy(false);
-      } else {
-        Vibration.vibrate([0, 30, 40, 30]);
-        setGameOver(true);
-        setBusy(false);
-      }
-    });
+  const submitScore = (points: number) => {
+    if (points <= 0) return;
+    socket.current?.emit('game_score_submit', { points, game: 'cards' });
   };
 
-  useEffect(() => {
-    if (
-      gameOver &&
-      !scoreSubmitted.current &&
-      streak > 0
-    ) {
-      scoreSubmitted.current = true;
+  const guess = (choice: 'higher' | 'lower') => {
+    if (gameOver) return;
+    const next = randomCard();
+    const correct =
+      (choice === 'higher' && next.value > current.value) ||
+      (choice === 'lower' && next.value < current.value);
 
-      sock.current?.emit('game_score_submit', {
-        points: streak * 10,
-        game: 'cards',
-      });
+    if (next.value === current.value) {
+      // تعادل بالقيمة — نعتبرها جولة محايدة، نسحب بطاقة جديدة بدون خسارة
+      setCurrent(next);
+      return;
     }
-  }, [gameOver, streak]);
+
+    if (correct) {
+      const newStreak = streak + 1;
+      setStreak(newStreak);
+      setBest((b) => Math.max(b, newStreak));
+      setCurrent(next);
+      setLastResult('win');
+    } else {
+      submitScore(streak * 10);
+      setGameOver(true);
+      setLastResult('lose');
+      setCurrent(next);
+    }
+  };
 
   const restart = () => {
-    setCurrent(drawCard());
-    setNext(null);
+    setCurrent(randomCard());
     setStreak(0);
     setGameOver(false);
-    setBusy(false);
-    scoreSubmitted.current = false;
-    flip.setValue(0);
+    setLastResult(null);
   };
 
   return (
-    <SafeAreaView style={s.safe}>
-      <View style={s.header}>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.back()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons
-            name="arrow-forward"
-            size={24}
-            color={C.sub}
-          />
+          <Ionicons name="arrow-forward" size={24} color={C.sub} />
         </TouchableOpacity>
 
-        <Text style={s.headerTitle}>
-          ورق — أعلى ولا أقل
-        </Text>
+        <Text style={styles.headerTitle}>ورق — أعلى ولا أقل</Text>
 
         <TouchableOpacity
           onPress={restart}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons
-            name="refresh"
-            size={22}
-            color={C.gold}
-          />
+          <Ionicons name="refresh" size={22} color={C.gold} />
         </TouchableOpacity>
       </View>
 
-      <Animated.View
-        style={[
-          s.body,
-          {
-            opacity: fade,
-          },
-        ]}
-      >
-        <View style={s.statsRow}>
-          <View style={s.statChip}>
-            <Ionicons
-              name="flame"
-              size={14}
-              color={C.gold}
-            />
-            <Text style={s.statTxt}>
-              السلسلة: {streak}
-            </Text>
+      <View style={styles.body}>
+        <View style={styles.statsRow}>
+          <View style={styles.statChip}>
+            <Text style={styles.statLabel}>السلسلة الحالية</Text>
+            <Text style={styles.statValue}>{streak}</Text>
           </View>
-
-          <View style={s.statChip}>
-            <Ionicons
-              name="trophy"
-              size={14}
-              color={C.sub}
-            />
-            <Text style={s.statTxt}>
-              الأفضل: {best}
-            </Text>
+          <View style={styles.statChip}>
+            <Text style={styles.statLabel}>أفضل سلسلة</Text>
+            <Text style={styles.statValue}>{best}</Text>
           </View>
         </View>
 
         {gameOver ? (
-          <View style={s.winBox}>
-            <Ionicons
-              name="close-circle"
-              size={54}
-              color={C.danger}
-            />
+          <Text style={[styles.status, { color: C.danger }]}>
+            انتهت اللعبة! نقاطك: {streak * 10} 🏆
+          </Text>
+        ) : (
+          <Text style={[styles.status, { color: C.text }]}>
+            {lastResult === 'win' ? 'إجابة صحيحة! 🎉' : 'خمّن البطاقة التالية'}
+          </Text>
+        )}
 
-            <Text style={s.winTitle}>
-              انتهت اللعبة
-            </Text>
+        <View style={styles.cardBox}>
+          <Text style={styles.cardText}>
+            {cardLabel(current.value)}
+            {'\n'}
+            {current.suit}
+          </Text>
+        </View>
 
-            <Text style={s.winSub}>
-              وصلت لسلسلة {streak} تخمين صحيح متتالي
-            </Text>
-
+        {gameOver ? (
+          <TouchableOpacity style={styles.restartButton} onPress={restart} activeOpacity={0.8}>
+            <Text style={styles.restartText}>لعبة جديدة</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.guessRow}>
             <TouchableOpacity
-              style={s.restartBtn}
-              onPress={restart}
+              style={[styles.guessButton, { backgroundColor: C.success }]}
+              onPress={() => guess('higher')}
+              activeOpacity={0.8}
             >
-              <Text style={s.restartTxt}>
-                لعبة جديدة
-              </Text>
+              <Ionicons name="arrow-up" size={20} color="#fff" />
+              <Text style={styles.guessText}>أعلى</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.guessButton, { backgroundColor: C.danger }]}
+              onPress={() => guess('lower')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="arrow-down" size={20} color="#fff" />
+              <Text style={styles.guessText}>أقل</Text>
             </TouchableOpacity>
           </View>
-        ) : (
-          <>
-            <View style={s.cardsRow}>
-              <CardFace card={current} />
-
-              <Ionicons
-                name="arrow-back"
-                size={22}
-                color={C.sub}
-              />
-
-              <CardFace card={next} />
-            </View>
-
-            <Text style={s.question}>
-              الورقة الجاية هتكون أعلى ولا أقل؟
-            </Text>
-
-            <View style={s.btnRow}>
-              <TouchableOpacity
-                style={[
-                  s.guessBtn,
-                  {
-                    backgroundColor: C.success,
-                  },
-                ]}
-                onPress={() => guess('higher')}
-                disabled={busy}
-              >
-                <Ionicons
-                  name="arrow-up"
-                  size={22}
-                  color="#fff"
-                />
-
-                <Text style={s.guessTxt}>
-                  أعلى
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  s.guessBtn,
-                  {
-                    backgroundColor: C.danger,
-                  },
-                ]}
-                onPress={() => guess('lower')}
-                disabled={busy}
-              >
-                <Ionicons
-                  name="arrow-down"
-                  size={22}
-                  color="#fff"
-                />
-
-                <Text style={s.guessTxt}>
-                  أقل
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </>
         )}
-      </Animated.View>
+      </View>
     </SafeAreaView>
   );
 }
 
-const s = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: C.bg,
-  },
-
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: C.bg },
   header: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
@@ -343,132 +169,48 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
-
-  headerTitle: {
-    color: C.text,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-
-  body: {
-    flex: 1,
-    alignItems: 'center',
-    paddingTop: 24,
-    paddingHorizontal: 20,
-  },
-
-  statsRow: {
-    flexDirection: 'row-reverse',
-    gap: 12,
-    marginBottom: 30,
-  },
-
+  headerTitle: { color: C.text, fontSize: 18, fontWeight: '800' },
+  body: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  statsRow: { flexDirection: 'row', gap: 14, marginBottom: 20 },
   statChip: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    gap: 6,
     backgroundColor: C.surface,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
     borderWidth: 1,
     borderColor: C.border,
-  },
-
-  statTxt: {
-    color: C.text,
-    fontSize: 13,
-    fontWeight: '700',
-    marginRight: 6,
-  },
-
-  cardsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-    marginBottom: 30,
-  },
-
-  cardFace: {
-    width: 96,
-    height: 136,
     borderRadius: 14,
-    backgroundColor: '#fff',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
     alignItems: 'center',
-    justifyContent: 'center',
+  },
+  statLabel: { color: C.sub, fontSize: 11 },
+  statValue: { color: C.gold, fontSize: 20, fontWeight: '800', marginTop: 2 },
+  status: { fontSize: 17, fontWeight: '700', marginBottom: 20, textAlign: 'center' },
+  cardBox: {
+    width: 160,
+    height: 220,
+    backgroundColor: C.surface,
     borderWidth: 2,
     borderColor: C.border,
-  },
-
-  cardRank: {
-    fontSize: 30,
-    fontWeight: '900',
-  },
-
-  cardSuit: {
-    fontSize: 26,
-    marginTop: 4,
-  },
-
-  question: {
-    color: C.sub,
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-
-  btnRow: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-
-  guessBtn: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 6,
     borderRadius: 18,
-    paddingVertical: 18,
-    paddingHorizontal: 32,
-  },
-
-  guessTxt: {
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 15,
-  },
-
-  winBox: {
     alignItems: 'center',
-    marginTop: 40,
+    justifyContent: 'center',
+    marginBottom: 30,
+  },
+  cardText: { color: C.text, fontSize: 40, fontWeight: '900', textAlign: 'center' },
+  guessRow: { flexDirection: 'row', gap: 16 },
+  guessButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
+    paddingHorizontal: 26,
+    paddingVertical: 14,
+    borderRadius: 24,
   },
-
-  winTitle: {
-    color: C.text,
-    fontSize: 22,
-    fontWeight: '800',
-    marginTop: 8,
-  },
-
-  winSub: {
-    color: C.sub,
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 4,
-  },
-
-  restartBtn: {
-    marginTop: 24,
+  guessText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  restartButton: {
     backgroundColor: C.primary,
-    paddingHorizontal: 28,
+    paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 24,
   },
-
-  restartTxt: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 15,
-  },
+  restartText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

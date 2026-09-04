@@ -47,3 +47,4 @@ yarn-error.*
 *.backup
 *.backup-*
 *.disabled
+server.log

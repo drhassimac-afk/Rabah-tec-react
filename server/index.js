@@ -48,13 +48,11 @@ app.post('/upload', upload.single('file'), (req, res) => {
     from,
     uploadedAt: Date.now(),
   };
-  // نحفظ بيانات الملف في فهرس بسيط بجانبه
   const indexPath = path.join(MEDIA_DIR, 'index.json');
   const index = fs.existsSync(indexPath) ? JSON.parse(fs.readFileSync(indexPath)) : [];
   index.unshift(meta);
   fs.writeFileSync(indexPath, JSON.stringify(index, null, 2));
 
-  // إشعار الأجهزة الأخرى بنفس الغرفة عبر Socket.io
   io.to(room).emit('file-shared', meta);
 
   res.json({ ok: true, file: meta, url: `/files/${req.file.filename}` });
@@ -70,10 +68,8 @@ app.get('/files', (req, res) => {
 
 app.use('/files', express.static(MEDIA_DIR));
 
-
 // ---------- 3) الألعاب + الإشارة + الحضور عبر Socket.io ----------
 
-// === لعبة إكس أو ===
 if (!global.xoState) {
   global.xoState = {
     board: Array(9).fill(null),
@@ -105,7 +101,6 @@ function xoWinner(board) {
 }
 
 // ---------- 3) الإشارة (Signaling) + الحضور (Presence) عبر Socket.io ----------
-// كل عميل يدخل غرفة برقم/اسم، ونحتفظ بقائمة الحاضرين لكل غرفة في الذاكرة
 const roomMembers = new Map(); // room -> Map(socketId -> {name})
 
 function getPresenceList(room) {
@@ -114,7 +109,14 @@ function getPresenceList(room) {
   return Array.from(members.entries()).map(([id, info]) => ({ id, name: info.name }));
 }
 
+// ---------- عدد المتصلين الآن على مستوى السيرفر بأكمله (لشاشة الألعاب) ----------
+const onlineSockets = new Set();
+
 io.on('connection', (socket) => {
+  // تتبع المتصلين الآن
+  onlineSockets.add(socket.id);
+  socket.emit('init', { onlineUsers: Array.from(onlineSockets) });
+  io.emit('onlineUsers', Array.from(onlineSockets));
 
   // إرسال حالة XO الحالية عند الاتصال
   socket.emit('xo_state', global.xoState);
@@ -173,35 +175,27 @@ io.on('connection', (socket) => {
     if (!roomMembers.has(room)) roomMembers.set(room, new Map());
     roomMembers.get(room).set(socket.id, { name: socket.data.name });
 
-    // نرسل للمنضم الجديد قائمة الموجودين حالياً (باش يبدأ هو عملية الـ offer معهم)
     socket.emit('room-members', getPresenceList(room).filter((m) => m.id !== socket.id));
-
-    // نعلم البقية بالانضمام الجديد
     socket.to(room).emit('peer-joined', { id: socket.id, name: socket.data.name });
-
     io.to(room).emit('presence', getPresenceList(room));
   });
 
-  // ترحيل إشارة WebRTC (offer/answer/ice-candidate) لطرف محدد داخل نفس الغرفة
   socket.on('signal', ({ to, data }) => {
     io.to(to).emit('signal', { from: socket.id, name: socket.data.name, data });
   });
 
-  // شات نصي مرحّل عبر السيرفر (احتياطي، بجانب أي قناة بيانات WebRTC مباشرة)
   socket.on('chat', ({ text }) => {
     const room = socket.data.room;
     if (!room) return;
     io.to(room).emit('chat', { name: socket.data.name, text, from: socket.id, time: Date.now() });
   });
 
-  // بث عام لأي بيانات داخل نفس الغرفة (تخاطب لاسلكي، حالة البث المباشر، تحكم السينما...)
   socket.on('room-broadcast', (payload) => {
     const room = socket.data.room;
     if (!room) return;
     socket.to(room).emit('room-broadcast', { ...payload, from: socket.id, name: socket.data.name });
   });
 
-  // يسمح لأي شاشة انضمت بعد دخول الغرفة (مثل شاشة البث) بطلب قائمة الحاضرين الحالية
   socket.on('get-presence', () => {
     const room = socket.data.room;
     if (!room) return;
@@ -250,6 +244,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    onlineSockets.delete(socket.id);
+    io.emit('onlineUsers', Array.from(onlineSockets));
+
     const room = socket.data.room;
     if (room && roomMembers.has(room)) {
       roomMembers.get(room).delete(socket.id);
