@@ -7,7 +7,7 @@ const PORT = 4000;
 const PING_TIMEOUT_MS = 700;
 
 // عدّل هذا الرابط بعد نشر السيرفر على استضافة سحابية (Render/Railway/...)
-export const CLOUD_SERVER_URL = 'https://YOUR-CLOUD-SERVER.example.com';
+export const CLOUD_SERVER_URL = 'https://rabah-tec-react.onrender.com';
 
 async function pingUrl(url: string): Promise<boolean> {
   try {
