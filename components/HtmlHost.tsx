@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import WebView, { WebViewMessageEvent } from 'react-native-webview';
 import { useRouter } from 'expo-router';
@@ -20,28 +20,46 @@ const SCREEN_ROUTES: Record<string, string> = {
 export default function HtmlHost() {
   const webViewRef = useRef<WebView>(null);
   const router = useRouter();
-  const [injectedJS, setInjectedJS] = useState<string | null>(null);
+  const configuredRef = useRef(false);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const serverUrl = await resolveServerUrl();
-        if (!serverUrl) return;
-        const match = serverUrl.match(/^https?:\/\/([^:/]+):?(\d+)?/);
-        if (!match) return;
-        const host = match[1];
-        const port = match[2] || '4000';
-        const js = `
+  const injectConnectionConfig = async () => {
+    try {
+      const serverUrl = await resolveServerUrl();
+      if (!serverUrl) {
+        console.log('[HtmlHost] لم يتم العثور على السيرفر بعد');
+        return;
+      }
+      const match = serverUrl.match(/^https?:\/\/([^:/]+):?(\d+)?/);
+      if (!match) return;
+      const host = match[1];
+      const port = match[2] || '4000';
+      const js = `
+        (function(){
           try {
             localStorage.setItem('rabahdj_connection', JSON.stringify({ enabled: true, ip: '${host}', port: '${port}' }));
+            console.log('rabahdj_connection injected: ${host}:${port}');
           } catch(e) {}
-          true;
-        `;
-        setInjectedJS(js);
-      } catch (e) {
-        console.log('[HtmlHost] server discovery failed', e);
-      }
-    })();
+        })();
+        true;
+      `;
+      webViewRef.current?.injectJavaScript(js);
+      configuredRef.current = true;
+    } catch (e) {
+      console.log('[HtmlHost] server discovery failed', e);
+    }
+  };
+
+  useEffect(() => {
+    injectConnectionConfig();
+    // إعادة محاولة الحقن دوريًا لأول 20 ثانية في حال تأخر اكتشاف السيرفر أو تأخر تحميل الصفحة
+    const interval = setInterval(() => {
+      if (!configuredRef.current) injectConnectionConfig();
+    }, 3000);
+    const timeout = setTimeout(() => clearInterval(interval), 20000);
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
   }, []);
 
   const handleMessage = (event: WebViewMessageEvent) => {
@@ -77,7 +95,7 @@ export default function HtmlHost() {
         mediaPlaybackRequiresUserAction={false}
         allowsInlineMediaPlayback
         onMessage={handleMessage}
-        injectedJavaScriptBeforeContentLoaded={injectedJS || undefined}
+        onLoadEnd={() => injectConnectionConfig()}
       />
     </View>
   );
