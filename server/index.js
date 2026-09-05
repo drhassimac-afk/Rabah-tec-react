@@ -8,6 +8,7 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const { Server } = require('socket.io');
+const { ExpressPeerServer } = require('peer');
 
 const PORT = process.env.PORT || 4000;
 const MEDIA_DIR = path.join(__dirname, 'media');
@@ -20,6 +21,10 @@ app.use(express.json());
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
+
+// ---------- PeerServer للواجهة القديمة (PeerJS) — يعمل على نفس المنفذ 4000 ----------
+const peerServer = ExpressPeerServer(server, { path: '/rabahdj', allow_discovery: false });
+app.use(peerServer);
 
 // ---------- 1) اكتشاف تلقائي (نفس فكرة RabahDj) ----------
 app.get('/ping', (req, res) => {

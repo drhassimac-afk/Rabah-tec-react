@@ -1,28 +1,48 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import WebView, { WebViewMessageEvent } from 'react-native-webview';
 import { useRouter } from 'expo-router';
 import { RABAHDJ_HTML } from '../_migration/htmlContent';
+import { resolveServerUrl } from '../src/api/serverDiscovery';
 
-// أسماء الشاشات كما ترسلها htmlContent.ts (cmd:'openNative', screen:'...')
-// وتُطابق المسارات الفعلية في مجلد app/
 const SCREEN_ROUTES: Record<string, string> = {
   walkie: '/walkie',
   live: '/live',
   files: '/files',
   games: '/games',
   settings: '/settings',
+  cinema: '/cinema/1',
   chat: '/chat',
   nearby: '/nearby',
   profile: '/profile',
-  cinema: '/cinema/1', // مؤقتًا id ثابت — عدّله لاحقًا حسب منطق الغرفة
-  // chat, nearby, profile: لا توجد بعد شاشات React Native لها
-  // ستبقى تعمل داخل WebView نفسه حتى تُبنى لاحقًا
 };
 
 export default function HtmlHost() {
   const webViewRef = useRef<WebView>(null);
   const router = useRouter();
+  const [injectedJS, setInjectedJS] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const serverUrl = await resolveServerUrl();
+        if (!serverUrl) return;
+        const match = serverUrl.match(/^https?:\/\/([^:/]+):?(\d+)?/);
+        if (!match) return;
+        const host = match[1];
+        const port = match[2] || '4000';
+        const js = `
+          try {
+            localStorage.setItem('rabahdj_connection', JSON.stringify({ enabled: true, ip: '${host}', port: '${port}' }));
+          } catch(e) {}
+          true;
+        `;
+        setInjectedJS(js);
+      } catch (e) {
+        console.log('[HtmlHost] server discovery failed', e);
+      }
+    })();
+  }, []);
 
   const handleMessage = (event: WebViewMessageEvent) => {
     let message: any;
@@ -57,6 +77,7 @@ export default function HtmlHost() {
         mediaPlaybackRequiresUserAction={false}
         allowsInlineMediaPlayback
         onMessage={handleMessage}
+        injectedJavaScriptBeforeContentLoaded={injectedJS || undefined}
       />
     </View>
   );
